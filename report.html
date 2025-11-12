@@ -526,68 +526,9 @@
         // --- FINE DARK MODE LOGIC ---
 
 
-        // =========================================================
-// 🔄 Carica i dati COMPLETI da Firestore (non da localStorage)
-// =========================================================
-async function loadAll() {
-    const snapshot = await db.collection("datasets").get();
-    let all = [];
-
-    snapshot.forEach(doc => {
-        const repartoKey = doc.id;
-        const data = doc.data();
-
-        if (!data.infermieri) return;
-
-        data.infermieri.forEach(nurse => {
-            const lastEval = nurse.ultimaValutazione || (
-                nurse.valutazioni ? nurse.valutazioni[nurse.valutazioni.length - 1] : null
-            );
-
-            if (!lastEval) return;
-
-            // Calcola livello medio complessivo
-            const sectionsWithAvg = (lastEval.sections || []).filter(s => s.answeredCount > 0);
-            const totalAverage = sectionsWithAvg.reduce((sum, s) => sum + s.average, 0);
-            const overallAverage = sectionsWithAvg.length > 0 ? totalAverage / sectionsWithAvg.length : 0;
-            const overallLevelText = scoreToLevelText(overallAverage);
-            const overallLevelNumber = Math.ceil(overallAverage);
-
-            // Dettagli domande (per radar/modale)
-            const itemDetails = (lastEval.selections || []).map(sel => {
-                const sectionData = COMPETENCE_DATA[repartoKey]?.[sel.sectionIndex];
-                const questionText = sectionData?.questions?.[sel.itemIndex];
-                return {
-                    question: questionText || `Domanda sconosciuta [${sel.sectionIndex}:${sel.itemIndex}]`,
-                    level: scoreToLevelText(sel.value),
-                    score: sel.value,
-                    sectionKey: sectionData?.key || 'N/D'
-                };
-            });
-
-            // Riga per tabella/grafici
-            const reportRow = {
-                date: lastEval.data,
-                nome: nurse.nome,
-                cognome: nurse.cognome,
-                matricola: nurse.matricola,
-                reparto: repartoKey,
-                valutatore: lastEval.valutatore || '-',
-                classe: overallLevelNumber,
-                levelText: overallLevelText,
-                overall: lastEval.total || 0,
-                evalDetails: lastEval.sections || [],
-                nurse,
-                allItemDetails: itemDetails
-            };
-
-            all.push(reportRow);
-        });
-    });
-
-    return all;
-}
-
+        // 3. Carica i dati
+all = loadAll();
+populateReparti();
         function populateReparti() {
             const reparti = Array.from(new Set(all.map(x => x.reparto).filter(Boolean)));
             filterReparto.innerHTML = '<option value=\"\">— Tutti —</option>';
@@ -869,85 +810,6 @@ async function loadAll() {
             updatePieCharts(filtered);
         }
 
-        // --- NUOVA LOGICA ANALISI AI ---
-        function performAIAnalysis() {
-            const totalNurses = all.length;
-            const resultsDiv = document.getElementById('aiAnalysisResults');
-
-            if (totalNurses === 0) {
-                resultsDiv.innerHTML = '<p class="text-red-500 font-semibold">Nessun dato di valutazione trovato per eseguire l\'analisi.</p>';
-                return;
-            }
-
-            // 1. Count distribution
-            const counts = { 1: 0, 2: 0, 3: 0, 4: 0 };
-            all.forEach(item => {
-                const classe = Number(item.classe);
-                if (classe >= 1 && classe <= 4) {
-                    counts[classe]++;
-                }
-            });
-
-            const percent = {
-                1: ((counts[1] / totalNurses) * 100).toFixed(1),
-                2: ((counts[2] / totalNurses) * 100).toFixed(1),
-                3: ((counts[3] / totalNurses) * 100).toFixed(1),
-                4: ((counts[4] / totalNurses) * 100).toFixed(1),
-            };
-
-            let analysisText = `
-                            <h4 class="font-bold text-base mb-2">Risultato Analisi Qualitativa AI (su ${totalNurses} infermieri):</h4>
-                            <p class="mb-3">La distribuzione attuale delle competenze (Livello Medio) è la seguente:</p>
-                            <ul class="list-disc list-inside space-y-1">
-                                <li class="${counts[1] > 0 ? 'font-medium' : ''}">Classe 1 (Supervisione Diretta): ${counts[1]} infermieri (${percent[1]}%)</li>
-                                <li class="${counts[2] > 0 ? 'font-medium' : ''}">Classe 2 (Supervisione Indiretta): ${counts[2]} infermieri (${percent[2]}%)</li>
-                                <li class="${counts[3] > 0 ? 'font-medium' : ''}">Classe 3 (Autonomo): ${counts[3]} infermieri (${percent[3]}%)</li>
-                                <li class="${counts[4] > 0 ? 'font-medium' : ''}">Classe 4 (Formatore): ${counts[4]} infermieri (${percent[4]}%)</li>
-                            </ul>
-                            <h5 class="font-bold mt-4 mb-2">Azioni di Miglioramento Raccomandate:</h5>
-                            <ul class="list-disc list-inside space-y-2">
-                        `;
-
-            // 2. Determine actions based on highest/critical concentration
-            const isHighLevel = counts[3] + counts[4] > totalNurses / 2; // Più della metà sono Autonomi o Formatori
-            const isLowLevelCritical = counts[1] > counts[2] && counts[1] > counts[3] && counts[1] > counts[4]; // Classe 1 è la più numerosa
-
-            if (isLowLevelCritical) {
-                analysisText += `
-                                <li class="font-semibold text-red-500">Focus Critico: Alto numero di infermieri in **Classe 1**.</li>
-                                <li>**KPI: Tasso di Promozione.** Implementare un piano di **Mentorship Intensiva (1:1)** accoppiando Classe 1 e Classe 4, con l'obiettivo di raggiungere il Livello 2 entro 6 mesi.</li>
-                                <li>**KPI: Tempo Medio alla Padronanza.** Organizzare **sessioni pratiche simulate** dedicate (simulazione ad alta fedeltà) per ridurre il tempo necessario a raggiungere l'autonomia per le procedure critiche.</li>
-                                <li>**KPI: Tasso di Incidenti.** Rivedere e semplificare i **Protocolli Operativi Standard (SOP)** per ridurre l'errore umano nella fase di apprendimento diretto.</li>
-                            `;
-            } else if (isHighLevel) {
-                analysisText += `
-                                <li class="font-semibold text-blue-600 dark:text-blue-400">Focus Avanzato: Forte presenza di Autonomia (**Classi 3 e 4**).</li>
-                                <li>**KPI: Ore di Mentorship Erogate.** Formalizzare un **Programma di Tutoring Interno strutturato**, trasformando gli infermieri di Classe 3 e 4 in formatori ufficiali per i colleghi junior (Classi 1 e 2).</li>
-                                <li>**KPI: Numero di Procedure Sviluppate.** Assegnare ai professionisti di Classe 3 e 4 la **Revisione e l'Aggiornamento dei Protocolli** per mantenere l'eccellenza operativa.</li>
-                                <li>**KPI: Indice di Transizione al Mentoring (ITM).** Investire in **Formazione Specialistica Esterna** (Master, Corsi Avanzati) per i professionisti di Classe 4, elevandoli a esperti di riferimento aziendale.</li>
-                            `;
-            } else if (counts[2] > 0) {
-                analysisText += `
-                                <li class="font-semibold text-yellow-500">Focus Intermedio: Maggiore concentrazione in **Classe 2**.</li>
-                                <li>**KPI: Tasso di Promozione.** Promuovere l'**Autonomia Vigilata**: Assegnare responsabilità complete sulla gestione di un'intera procedura sotto supervisione a distanza per favorire il passaggio a Classe 3.</li>
-                                <li>**KPI: Discrepanza Max-Min Competenza.** Programmare **Corsi di Approfondimento Specifico** (es. gestione delle complicanze) per elevare il livello di competenza oltre la base.</li>
-                                <li>**KPI: Indice di Copertura.** Incoraggiare la **Partecipazione a Gruppi di Lavoro** o audit interni per sviluppare il senso critico e la capacità decisionale indipendente.</li>
-                            `;
-            }
-            else {
-                analysisText += `
-                                <li>La distribuzione è equilibrata o i dati sono insufficienti per un'analisi mirata. L'azione prioritaria è **identificare le aree di competenza con il punteggio medio più basso** (consultare i dettagli della valutazione) e concentrare la formazione su di esse.</li>
-                                <li>Mantenere un ciclo di valutazione continuo per monitorare la progressione individuale.</li>
-                            `;
-            }
-
-            analysisText += '</ul>';
-            resultsDiv.innerHTML = analysisText;
-        }
-        // --- FINE NUOVA LOGICA ANALISI AI ---
-
-
-
         // exports (Invariate)
         document.getElementById('exportJSON').addEventListener('click', () => {
             const blob = new Blob([JSON.stringify(all, null, 2)], { type: 'application/json' });
@@ -980,12 +842,9 @@ async function loadAll() {
             // 2. Crea le istanze dei grafici (ora con i colori del tema corretti)
             initCharts();
 
-            // 3. Carica i dati dal Cloud Firestore
-            loadAll().then(result => {
-                all = result;
-                populateReparti();
-                renderTable(); // assicurati che venga disegnata la tabella e i grafici
-            });
+            // 3. Carica i dati
+            all = loadAll();
+            populateReparti();
 
 
             // 4. Popola la tabella e aggiorna i grafici con i dati
