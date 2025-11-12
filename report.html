@@ -526,67 +526,67 @@
         // --- FINE DARK MODE LOGIC ---
 
 
-        // Funzione per caricare, filtrare e preparare i dati per i report
-        function loadAll() {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            if (!raw) return [];
-            const data = JSON.parse(raw);
-            let all = [];
+        // =========================================================
+// 🔄 Carica i dati COMPLETI da Firestore (non da localStorage)
+// =========================================================
+async function loadAll() {
+    const snapshot = await db.collection("datasets").get();
+    let all = [];
 
-            for (const repartoKey in data) {
-                if (data[repartoKey].infermieri) {
-                    data[repartoKey].infermieri.forEach(nurse => {
-                        // Prende l'ultima valutazione specifica per reparto
-                        const lastEval = nurse.valutazioni ? nurse.valutazioni.find(v => v.reparto === repartoKey) : null;
+    snapshot.forEach(doc => {
+        const repartoKey = doc.id;
+        const data = doc.data();
 
-                        if (lastEval) {
-                            // Calcola il livello medio complessivo (nuovo approccio)
-                            // Calcola la somma delle medie delle sezioni che hanno risposte
-                            const sectionsWithAvg = lastEval.sections.filter(s => (s.answeredCount || 0) > 0);
-                            const totalAverage = sectionsWithAvg.reduce((sum, s) => sum + (s.average || 0), 0);
-                            const answeredGroups = sectionsWithAvg.length;
-                            const overallAverage = answeredGroups > 0 ? totalAverage / answeredGroups : 0;
+        if (!data.infermieri) return;
 
-                            // Ottiene il testo del livello complessivo (arrotondato)
-                            const overallLevelText = scoreToLevelText(overallAverage);
-                            const overallLevelNumber = Math.ceil(overallAverage);
+        data.infermieri.forEach(nurse => {
+            const lastEval = nurse.ultimaValutazione || (
+                nurse.valutazioni ? nurse.valutazioni[nurse.valutazioni.length - 1] : null
+            );
 
-                            // Mappa le selezioni ai dettagli delle domande per la modale
-                            const itemDetails = lastEval.selections.map(selection => {
-                                const sectionData = COMPETENCE_DATA[repartoKey]?.[selection.sectionIndex];
-                                const questionText = sectionData?.questions[selection.itemIndex];
-                                return {
-                                    question: questionText || `Domanda sconosciuta [${selection.sectionIndex}:${selection.itemIndex}]`,
-                                    level: scoreToLevelText(selection.value),
-                                    score: selection.value,
-                                    sectionKey: sectionData?.key
-                                };
-                            }).filter(d => d.question); // Filtra le domande non mappate se i dati sono corrotti
+            if (!lastEval) return;
 
+            // Calcola livello medio complessivo
+            const sectionsWithAvg = (lastEval.sections || []).filter(s => s.answeredCount > 0);
+            const totalAverage = sectionsWithAvg.reduce((sum, s) => sum + s.average, 0);
+            const overallAverage = sectionsWithAvg.length > 0 ? totalAverage / sectionsWithAvg.length : 0;
+            const overallLevelText = scoreToLevelText(overallAverage);
+            const overallLevelNumber = Math.ceil(overallAverage);
 
-                            // Prepara il report row
-                            const reportRow = {
-                                date: lastEval.data,
-                                nome: nurse.nome,
-                                cognome: nurse.cognome,
-                                matricola: nurse.matricola,
-                                reparto: repartoKey,
-                                valutatore: nurse.valutatore || '-',
-                                // La classe non esiste più: usiamo il numero del livello per il raggruppamento nei grafici
-                                classe: overallLevelNumber,
-                                levelText: overallLevelText,
-                                overall: lastEval.total,
-                                evalDetails: lastEval.sections, // Dettagli per il radar (media sezione)
-                                nurse: nurse, // Dati completi infermiere
-                                allItemDetails: itemDetails // Dettagli per la lista della modale
-                            };
-                            all.push(reportRow);
-                        }
-                    });
-                }
-            }
-            return all;
-        }
+            // Dettagli domande (per radar/modale)
+            const itemDetails = (lastEval.selections || []).map(sel => {
+                const sectionData = COMPETENCE_DATA[repartoKey]?.[sel.sectionIndex];
+                const questionText = sectionData?.questions?.[sel.itemIndex];
+                return {
+                    question: questionText || `Domanda sconosciuta [${sel.sectionIndex}:${sel.itemIndex}]`,
+                    level: scoreToLevelText(sel.value),
+                    score: sel.value,
+                    sectionKey: sectionData?.key || 'N/D'
+                };
+            });
+
+            // Riga per tabella/grafici
+            const reportRow = {
+                date: lastEval.data,
+                nome: nurse.nome,
+                cognome: nurse.cognome,
+                matricola: nurse.matricola,
+                reparto: repartoKey,
+                valutatore: lastEval.valutatore || '-',
+                classe: overallLevelNumber,
+                levelText: overallLevelText,
+                overall: lastEval.total || 0,
+                evalDetails: lastEval.sections || [],
+                nurse,
+                allItemDetails: itemDetails
+            };
+
+            all.push(reportRow);
+        });
+    });
+
+    return all;
+}
 
         function populateReparti() {
             const reparti = Array.from(new Set(all.map(x => x.reparto).filter(Boolean)));
@@ -980,9 +980,13 @@
             // 2. Crea le istanze dei grafici (ora con i colori del tema corretti)
             initCharts();
 
-            // 3. Carica i dati
-            all = loadAll();
-            populateReparti();
+            // 3. Carica i dati dal Cloud Firestore
+            loadAll().then(result => {
+                all = result;
+                populateReparti();
+                renderTable(); // assicurati che venga disegnata la tabella e i grafici
+            });
+
 
             // 4. Popola la tabella e aggiorna i grafici con i dati
             renderTable();
@@ -1068,6 +1072,7 @@ async function renderReport(reparto) {
 // 🔹 Dopo il caricamento iniziale:
 renderReport("Chirurgia Generale");
 </script>
+
 
 </body>
 </html>
