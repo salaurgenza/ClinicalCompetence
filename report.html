@@ -993,44 +993,83 @@
     <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-analytics-compat.js"></script>
 
-    <script>// 🔧 Configurazione Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyBGk5B_YtjiEwSGk-4haXpdip4OME3vhcU",
-            authDomain: "competenze-34393.firebaseapp.com",
-            projectId: "competenze-34393",
-            storageBucket: "competenze-34393.appspot.com",
-            messagingSenderId: "7566486414",
-            appId: "1:7566486414:web:d4aaed0c13b270a24552df",
-            measurementId: "G-XXXXXXX"
-        };
+    <script>
+// 🔧 Configurazione Firebase
+const firebaseConfig = {
+    apiKey: "AIzaSyBGk5B_YtjiEwSGk-4haXpdip4OME3vhcU",
+    authDomain: "competenze-34393.firebaseapp.com",
+    projectId: "competenze-34393",
+    storageBucket: "competenze-34393.appspot.com",
+    messagingSenderId: "7566486414",
+    appId: "1:7566486414:web:d4aaed0c13b270a24552df",
+    measurementId: "G-PYYZ9M7XH7" // 🔹 aggiorna anche qui
+};
 
-        // 🔥 Inizializza Firebase compatibile
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const analytics = firebase.analytics();
+// 🔥 Inizializza Firebase compatibile
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const analytics = firebase.analytics();
 
-        console.log("✅ Firebase connesso correttamente (report)");
+console.log("✅ Firebase connesso correttamente (report)");
 
-        // Esempio: caricamento dei dati
-        async function loadDataset(reparto) {
-            try {
-                const ref = db.collection("datasets").doc(reparto);
-                const snap = await ref.get();
-                if (snap.exists) {
-                    console.log("📥 Dati caricati da Firestore:", reparto);
-                    return snap.data();
-                } else {
-                    console.warn("⚠️ Nessun dato trovato per:", reparto);
-                    return null;
-                }
-            } catch (e) {
-                console.error("❌ Errore durante il caricamento Firestore:", e);
-                return null;
-            }
+// Funzione per caricare un dataset da Firestore
+async function loadDataset(reparto) {
+    try {
+        const ref = db.collection("datasets").doc(reparto);
+        const snap = await ref.get();
+        if (snap.exists) {
+            console.log("📥 Dati caricati da Firestore:", reparto);
+            return snap.data();
+        } else {
+            console.warn("⚠️ Nessun dato trovato per:", reparto);
+            return null;
         }
+    } catch (e) {
+        console.error("❌ Errore durante il caricamento Firestore:", e);
+        return null;
+    }
+}
 
-        // Richiamo di esempio
-        loadDataset("Chirurgia Generale");</script>
+// 🔹 Richiamo iniziale
+loadDataset("Chirurgia Generale");
+</script>
+
+<!-- ✅ BLOCCO VISIVO: elenco infermieri dal cloud -->
+<div id="cloudReport" class="p-4 bg-white shadow-md rounded-xl mt-6 text-sm">
+  <h2 class="text-lg font-bold mb-2 text-blue-700">📊 Dati caricati da Firestore</h2>
+  <div id="reportContent" class="text-gray-800">Caricamento...</div>
+</div>
+
+<script>
+async function renderReport(reparto) {
+  const data = await loadDataset(reparto);
+  const div = document.getElementById("reportContent");
+
+  if (!data || !Array.isArray(data.infermieri) || data.infermieri.length === 0) {
+    div.innerHTML = `<p class="text-red-500">⚠️ Nessun infermiere trovato per ${reparto}</p>`;
+    return;
+  }
+
+  let html = "";
+  data.infermieri.forEach((inf, i) => {
+    html += `
+      <div class="border-b border-gray-300 py-2">
+        <p><b>${i + 1}. ${inf.nome} ${inf.cognome}</b> – ${inf.ruolo}</p>
+        <p>Matricola: ${inf.matricola} | Esperienza: ${inf.esperienza} anni</p>
+        <p>Valutatore: ${inf.ultimaValutazione?.valutatore ?? "-"}</p>
+        <p>Punteggio totale: ${inf.ultimaValutazione?.total ?? "N/D"}</p>
+      </div>
+    `;
+  });
+
+  div.innerHTML = html;
+}
+
+// 🔹 Dopo il caricamento iniziale:
+renderReport("Chirurgia Generale");
+</script>
 
 </body>
+</html>
+
 </html>
