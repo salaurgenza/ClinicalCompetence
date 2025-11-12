@@ -1037,100 +1037,113 @@
         document.getElementById('btnImport').addEventListener('click', () => {
             window.open('survey_vbhc_infermieri_sala_operatoria_html.html', '_blank');
         });</script>
-    <!-- ✅ Firebase compatibile (nessun import/export, nessun errore) -->
-    <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-analytics-compat.js"></script>
+   <!-- ✅ Firebase compatibile (nessun import/export, nessun errore) -->
+<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-analytics-compat.js"></script>
 
-    <script>// 🔧 Configurazione Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyBGk5B_YtjiEwSGk-4haXpdip4OME3vhcU",
-            authDomain: "competenze-34393.firebaseapp.com",
-            projectId: "competenze-34393",
-            storageBucket: "competenze-34393.appspot.com",
-            messagingSenderId: "7566486414",
-            appId: "1:7566486414:web:d4aaed0c13b270a24552df",
-            measurementId: "G-XXXXXXX"
+<script>
+// 🔧 Configurazione Firebase
+const firebaseConfig = {
+    apiKey: "AIzaSyBGk5B_YtjiEwSGk-4haXpdip4OME3vhcU",
+    authDomain: "competenze-34393.firebaseapp.com",
+    projectId: "competenze-34393",
+    storageBucket: "competenze-34393.appspot.com",
+    messagingSenderId: "7566486414",
+    appId: "1:7566486414:web:d4aaed0c13b270a24552df",
+    measurementId: "G-PYYZ9M7XH7" // 🔹 aggiornato con ID reale
+};
+
+// 🔥 Inizializza Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const analytics = firebase.analytics();
+console.log("✅ Firebase connesso correttamente");
+
+// --- Utility Firestore compatibili ---
+async function pullReparto(reparto) {
+    try {
+        const ref = db.collection("datasets").doc(reparto);
+        const snap = await ref.get();
+        return snap.exists ? snap.data() : null;
+    } catch (e) {
+        console.warn("⚠️ Errore durante pullReparto:", e);
+        return null;
+    }
+}
+
+async function pushReparto(reparto, payload) {
+    try {
+        const ref = db.collection("datasets").doc(reparto);
+        const toSave = {
+            infermieri: payload?.infermieri ?? [],
+            _updatedAt: new Date().toISOString()
         };
+        await ref.set(toSave, { merge: true });
+        console.log(`☁️ Dati sincronizzati su Firestore per ${reparto}`);
+    } catch (e) {
+        console.warn("⚠️ Errore durante pushReparto:", e);
+    }
+}
 
-        // 🔥 Inizializza Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const analytics = firebase.analytics();
+// 🌐 Bridge globale per sincronizzazione cloud ↔︎ locale
+window.firebaseSync = {
+    async pullAllIntoLocal(ALL_REPARTI, data, saveData, reRender) {
+        try {
+            let changed = false;
+            for (const reparto of ALL_REPARTI) {
+                const cloud = await pullReparto(reparto);
+                if (cloud && Array.isArray(cloud.infermieri)) {
+                    const local = data[reparto] ?? { infermieri: [] };
+                    const byId = new Map(local.infermieri.map(n => [n.id, n]));
+                    cloud.infermieri.forEach(n => byId.set(n.id, n));
+                    const merged = Array.from(byId.values());
+                    data[reparto] = data[reparto] || {};
+                    data[reparto].infermieri = merged;
+                    changed = true;
+                }
+            }
+            if (changed) {
+                saveData();
+                reRender?.();
+            }
+        } catch (e) {
+            console.warn("⚠️ Pull cloud fallita: continuo solo locale.", e);
+        }
+    },
 
-        console.log("✅ Firebase connesso correttamente");
+    async pushCurrent(currentReparto, data) {
+        try {
+            await pushReparto(currentReparto, data[currentReparto]);
+        } catch (e) {
+            console.warn("⚠️ Push cloud fallita, ok: resta locale.", e);
+        }
+    },
 
-        // --- Utility Firestore compatibili ---
-        async function pullReparto(reparto) {
+    async pushAll(ALL_REPARTI, data) {
+        for (const r of ALL_REPARTI) {
             try {
-                const ref = db.collection("datasets").doc(reparto);
-                const snap = await ref.get();
-                return snap.exists ? snap.data() : null;
+                await pushReparto(r, data[r]);
             } catch (e) {
-                console.warn("⚠️ Errore durante pullReparto:", e);
-                return null;
+                console.warn("⚠️ Push fallita per", r);
             }
         }
+    }
+};
 
-        async function pushReparto(reparto, payload) {
-            try {
-                const ref = db.collection("datasets").doc(reparto);
-                const toSave = {
-                    infermieri: payload?.infermieri ?? [],
-                    _updatedAt: new Date().toISOString()
-                };
-                await ref.set(toSave, { merge: true });
-            } catch (e) {
-                console.warn("⚠️ Errore durante pushReparto:", e);
-            }
+// ✅ Sincronizzazione automatica dopo ogni "Salva valutazione"
+document.getElementById("btnSaveEval").addEventListener("click", async () => {
+    setTimeout(async () => {
+        try {
+            console.log("☁️ Sincronizzo su Firestore:", currentReparto);
+            await window.firebaseSync.pushCurrent(currentReparto, data);
+            console.log("✅ Dati sincronizzati su Firestore per", currentReparto);
+        } catch (e) {
+            console.warn("⚠️ Errore durante la sincronizzazione:", e);
         }
-
-        // 🌐 Bridge globale per sincronizzazione cloud ↔︎ locale
-        window.firebaseSync = {
-            async pullAllIntoLocal(ALL_REPARTI, data, saveData, reRender) {
-                try {
-                    let changed = false;
-                    for (const reparto of ALL_REPARTI) {
-                        const cloud = await pullReparto(reparto);
-                        if (cloud && Array.isArray(cloud.infermieri)) {
-                            const local = data[reparto] ?? { infermieri: [] };
-                            const byId = new Map(local.infermieri.map(n => [n.id, n]));
-                            cloud.infermieri.forEach(n => byId.set(n.id, n));
-                            const merged = Array.from(byId.values());
-                            data[reparto] = data[reparto] || {};
-                            data[reparto].infermieri = merged;
-                            changed = true;
-                        }
-                    }
-                    if (changed) {
-                        saveData();
-                        reRender?.();
-                    }
-                } catch (e) {
-                    console.warn("⚠️ Pull cloud fallita: continuo solo locale.", e);
-                }
-            },
-
-            async pushCurrent(currentReparto, data) {
-                try {
-                    await pushReparto(currentReparto, data[currentReparto]);
-                } catch (e) {
-                    console.warn("⚠️ Push cloud fallita, ok: resta locale.", e);
-                }
-            },
-
-            async pushAll(ALL_REPARTI, data) {
-                for (const r of ALL_REPARTI) {
-                    try {
-                        await pushReparto(r, data[r]);
-                    } catch (e) {
-                        console.warn("⚠️ Push fallita per", r);
-                    }
-                }
-            }
-        };</script>
-
-
+    }, 1000);
+});
+</script>
 
 </body>
 </html>
