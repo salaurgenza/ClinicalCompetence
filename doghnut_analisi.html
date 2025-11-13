@@ -396,9 +396,9 @@
             renderLegend();
         });</script>
     <script type="module">import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-        import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-        // 🔥 Configurazione esattamente come in report.html
+        // 🔥 Configurazione clinicalcompetenceor
         const firebaseConfig = {
             apiKey: "AIzaSyDuDjV6nU5YuNfkivTKJ1kf6NwmkGRIi34",
             authDomain: "clinicalcompetenceor.firebaseapp.com",
@@ -409,117 +409,73 @@
             measurementId: "G-V547BJD3VC"
         };
 
-        // Inizializza Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // ======================================================================================
-        // 🔥 FUNZIONE PRINCIPALE: leggi tutte le valutazioni da Firestore e aggregale
-        // ======================================================================================
-        function loadAndAggregateDataFromFirestore() {
+        // ====================================================================
+        // 🔥 NUOVA FUNZIONE: recupera TUTTE LE VALUTAZIONI da infermieri/*
+        // ====================================================================
+        async function loadAllEvaluationsFromFirestore() {
 
-            return new Promise((resolve) => {
+            const snap = await getDocs(collection(db, "infermieri"));
+            const data = {};
 
-                onSnapshot(collection(db, "valutazioni"), (snapshot) => {
+            snap.forEach(docSnap => {
+                const nurse = docSnap.data();
+                const reparto = nurse.reparto;
 
-                    const data = {};
+                if (!reparto) return;
 
-                    snapshot.forEach(docSnap => {
-                        const val = docSnap.data();
+                if (!data[reparto]) data[reparto] = { infermieri: [] };
 
-                        if (!val.reparto || !val.sections) return;
+                // *** usa tutte le valutazioni passate ***
+                const valutazioni = Array.isArray(nurse.valutazioni)
+                    ? nurse.valutazioni
+                    : (nurse.ultimaValutazione ? [nurse.ultimaValutazione] : []);
 
-                        if (!data[val.reparto]) {
-                            data[val.reparto] = { infermieri: [] };
-                        }
-
-                        data[val.reparto].infermieri.push({
-                            nome: val.infermiere?.nome || "N/D",
-                            valutazioni: [val]
-                        });
-                    });
-
-                    resolve(window.loadAndAggregateDataFromObject(data));
+                data[reparto].infermieri.push({
+                    nome: nurse.nome || "N/D",
+                    valutazioni: valutazioni
                 });
+            });
 
+            return window.loadAndAggregateDataFromObject(data);
+        }
+
+        // ====================================================================
+        // 🔥 REALTIME: aggiorna grafico ogni volta che cambia un documento
+        // ====================================================================
+        function startRealtimeChart() {
+
+            onSnapshot(collection(db, "infermieri"), async () => {
+
+                const aggregatedCounts = await loadAllEvaluationsFromFirestore();
+
+                const chartDiv = document.getElementById('targetChart');
+                const noDataMsg = document.getElementById('noDataMessage');
+                const centerText = document.getElementById('centerText');
+
+                if (!aggregatedCounts || Object.keys(aggregatedCounts).length === 0) {
+                    chartDiv.style.display = 'none';
+                    centerText.style.display = 'none';
+                    noDataMsg.classList.remove('hidden');
+                    if (window.chart) window.chart.destroy();
+                    return;
+                }
+
+                noDataMsg.classList.add('hidden');
+                chartDiv.style.display = 'block';
+                centerText.style.display = 'block';
+
+                const chartData = prepareChartData(aggregatedCounts);
+
+                if (window.chart) window.chart.destroy();
+                window.chart = initChart(chartData);
+                renderLegend();
             });
         }
 
-        // ======================================================================================
-        // 🔥 Wrapper che riutilizza la logica già presente nel tuo file (NON MODIFICARE)
-        // ======================================================================================
-        window.loadAndAggregateDataFromObject = function (data) {
-            let aggregatedData = {};
-
-            for (const repartoKey in data) {
-                if (!data[repartoKey].infermieri) continue;
-
-                data[repartoKey].infermieri.forEach(nurse => {
-
-                    const lastEval = nurse.valutazioni?.find(v => v.reparto === repartoKey);
-                    if (!lastEval) return;
-
-                    const sectionsWithAvg = lastEval.sections.filter(s => (s.answeredCount || 0) > 0);
-                    const totalAverage = sectionsWithAvg.reduce((sum, s) => sum + (s.average || 0), 0);
-                    const answeredGroups = sectionsWithAvg.length;
-                    const overallAverage = answeredGroups > 0 ? totalAverage / answeredGroups : 0;
-
-                    const overallLevel = Math.min(4, Math.max(1, Math.ceil(overallAverage)));
-
-                    lastEval.sections.forEach(section => {
-                        if ((section.answeredCount || 0) === 0) return;
-
-                        const repInfo = repartiMap[repartoKey];
-                        if (!repInfo) return;
-
-                        const key = `${repartoKey}|${section.key || section.nome}|${overallLevel}`;
-                        aggregatedData[key] = (aggregatedData[key] || 0) + 1;
-                    });
-
-                });
-            }
-
-            return aggregatedData;
-        };
-
-        // ======================================================================================
-        // 🔥 INIT: ora legge SOLO Firestore e aggiorna il doughnut in tempo reale
-        // ======================================================================================
-        async function initFirebaseChart() {
-
-            applyTheme(currentTheme);
-
-            const aggregatedCounts = await loadAndAggregateDataFromFirestore();
-
-            const chartDiv = document.getElementById('targetChart');
-            const noDataMsg = document.getElementById('noDataMessage');
-            const centerText = document.getElementById('centerText');
-
-            if (!aggregatedCounts || Object.keys(aggregatedCounts).length === 0) {
-                chartDiv.style.display = 'none';
-                centerText.style.display = 'none';
-                noDataMsg.classList.remove('hidden');
-                return;
-            }
-
-            const chartData = prepareChartData(aggregatedCounts);
-
-            if (!chartData || chartData.reparto.data.length === 0) {
-                chartDiv.style.display = 'none';
-                centerText.style.display = 'none';
-                noDataMsg.classList.remove('hidden');
-                return;
-            }
-
-            noDataMsg.classList.add('hidden');
-            chartDiv.style.display = 'block';
-            centerText.style.display = 'block';
-
-            window.chart = initChart(chartData);
-            renderLegend();
-        }
-
-        document.addEventListener('DOMContentLoaded', initFirebaseChart);</script>
+        document.addEventListener("DOMContentLoaded", startRealtimeChart);</script>
 
 
 </body>
