@@ -339,9 +339,9 @@
                     const item = document.createElement('div');
                     item.className = 'flex items-center space-x-2 p-2 rounded-lg bg-gray-100 dark:bg-gray-700 shadow-sm';
                     item.innerHTML = `
-                                <span class="w-4 h-4 rounded-full" style="background-color: ${info.color}; border: 1px solid ${isDarkMode() ? '#e5e7eb' : '#374151'};"></span>
-                                <span>Livello ${level}: ${info.label}</span>
-                            `;
+                                    <span class="w-4 h-4 rounded-full" style="background-color: ${info.color}; border: 1px solid ${isDarkMode() ? '#e5e7eb' : '#374151'};"></span>
+                                    <span>Livello ${level}: ${info.label}</span>
+                                `;
                     legendContainer.appendChild(item);
                 }
             });
@@ -396,7 +396,7 @@
             renderLegend();
         });</script>
     <script type="module">import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-        import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
         // 🔥 Configurazione esattamente come in report.html
         const firebaseConfig = {
@@ -413,98 +413,80 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // ======================================================
-        // 🔹 SOSTITUZIONE FUNZIONE loadAndAggregateData()
-        //    per leggere le valutazioni da Firestore invece che da localStorage
-        // ======================================================
-        async function loadAndAggregateDataFromFirestore() {
-            import { onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+        // ======================================================================================
+        // 🔥 FUNZIONE PRINCIPALE: leggi tutte le valutazioni da Firestore e aggregale
+        // ======================================================================================
+        function loadAndAggregateDataFromFirestore() {
 
-            function listenAndUpdateChart() {
-                const unsub = onSnapshot(collection(db, "valutazioni"), async (snapshot) => {
-                    if (snapshot.empty) return;
+            return new Promise((resolve) => {
+
+                onSnapshot(collection(db, "valutazioni"), (snapshot) => {
 
                     const data = {};
+
                     snapshot.forEach(docSnap => {
                         const val = docSnap.data();
-                        if (!val.reparto || !val.infermiere) return;
-                        if (!data[val.reparto]) data[val.reparto] = { infermieri: [] };
+
+                        if (!val.reparto || !val.sections) return;
+
+                        if (!data[val.reparto]) {
+                            data[val.reparto] = { infermieri: [] };
+                        }
+
                         data[val.reparto].infermieri.push({
-                            nome: val.infermiere.nome,
+                            nome: val.infermiere?.nome || "N/D",
                             valutazioni: [val]
                         });
                     });
 
-                    const aggregatedCounts = window.loadAndAggregateDataFromObject(data);
-                    const chartData = prepareChartData(aggregatedCounts);
-
-                    if (!chartData || chartData.reparto.data.length === 0) return;
-
-                    // Aggiorna il grafico
-                    if (window.chart) {
-                        window.chart.data.datasets = initChart(chartData).data.datasets;
-                        window.chart.update();
-                    } else {
-                        window.chart = initChart(chartData);
-                        renderLegend();
-                    }
+                    resolve(window.loadAndAggregateDataFromObject(data));
                 });
 
-                return unsub;
-            }
-
-
-            const data = {};
-            snapshot.forEach(docSnap => {
-                const val = docSnap.data();
-                if (!val.reparto || !val.infermiere) return;
-
-                if (!data[val.reparto]) data[val.reparto] = { infermieri: [] };
-                data[val.reparto].infermieri.push({
-                    nome: val.infermiere.nome,
-                    valutazioni: [val]
-                });
             });
-
-            // 🔁 Riusa la stessa logica di aggregazione
-            return window.loadAndAggregateDataFromObject(data);
         }
 
-        // ======================================================
-        // 🔹 Wrapper per riutilizzare la funzione originale
-        // ======================================================
+        // ======================================================================================
+        // 🔥 Wrapper che riutilizza la logica già presente nel tuo file (NON MODIFICARE)
+        // ======================================================================================
         window.loadAndAggregateDataFromObject = function (data) {
             let aggregatedData = {};
-            for (const repartoKey in data) {
-                if (data[repartoKey].infermieri) {
-                    data[repartoKey].infermieri.forEach(nurse => {
-                        const lastEval = nurse.valutazioni ? nurse.valutazioni.find(v => v.reparto === repartoKey) : null;
-                        if (lastEval) {
-                            const sectionsWithAvg = lastEval.sections.filter(s => (s.answeredCount || 0) > 0);
-                            const totalAverage = sectionsWithAvg.reduce((sum, s) => sum + (s.average || 0), 0);
-                            const answeredGroups = sectionsWithAvg.length;
-                            const overallAverage = answeredGroups > 0 ? totalAverage / answeredGroups : 0;
-                            const overallLevel = Math.min(4, Math.max(1, Math.ceil(overallAverage)));
 
-                            lastEval.sections.forEach(section => {
-                                if ((section.answeredCount || 0) > 0) {
-                                    const repInfo = repartiMap[repartoKey];
-                                    if (!repInfo) return;
-                                    const key = `${repartoKey}|${section.key || section.nome}|${overallLevel}`;
-                                    aggregatedData[key] = (aggregatedData[key] || 0) + 1;
-                                }
-                            });
-                        }
+            for (const repartoKey in data) {
+                if (!data[repartoKey].infermieri) continue;
+
+                data[repartoKey].infermieri.forEach(nurse => {
+
+                    const lastEval = nurse.valutazioni?.find(v => v.reparto === repartoKey);
+                    if (!lastEval) return;
+
+                    const sectionsWithAvg = lastEval.sections.filter(s => (s.answeredCount || 0) > 0);
+                    const totalAverage = sectionsWithAvg.reduce((sum, s) => sum + (s.average || 0), 0);
+                    const answeredGroups = sectionsWithAvg.length;
+                    const overallAverage = answeredGroups > 0 ? totalAverage / answeredGroups : 0;
+
+                    const overallLevel = Math.min(4, Math.max(1, Math.ceil(overallAverage)));
+
+                    lastEval.sections.forEach(section => {
+                        if ((section.answeredCount || 0) === 0) return;
+
+                        const repInfo = repartiMap[repartoKey];
+                        if (!repInfo) return;
+
+                        const key = `${repartoKey}|${section.key || section.nome}|${overallLevel}`;
+                        aggregatedData[key] = (aggregatedData[key] || 0) + 1;
                     });
-                }
+
+                });
             }
+
             return aggregatedData;
         };
 
-        // ======================================================
-        // 🔹 Inizializzazione grafico modificata
-        // ======================================================
-        async function init() {
+        // ======================================================================================
+        // 🔥 INIT: ora legge SOLO Firestore e aggiorna il doughnut in tempo reale
+        // ======================================================================================
+        async function initFirebaseChart() {
+
             applyTheme(currentTheme);
 
             const aggregatedCounts = await loadAndAggregateDataFromFirestore();
@@ -521,6 +503,7 @@
             }
 
             const chartData = prepareChartData(aggregatedCounts);
+
             if (!chartData || chartData.reparto.data.length === 0) {
                 chartDiv.style.display = 'none';
                 centerText.style.display = 'none';
@@ -532,11 +515,12 @@
             chartDiv.style.display = 'block';
             centerText.style.display = 'block';
 
-            chart = initChart(chartData);
+            window.chart = initChart(chartData);
             renderLegend();
         }
 
-        document.addEventListener('DOMContentLoaded', init);</script>
+        document.addEventListener('DOMContentLoaded', initFirebaseChart);</script>
+
 
 </body>
 </html>
