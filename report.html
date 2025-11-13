@@ -115,6 +115,7 @@
                             <th class="p-2 text-left">Reparto</th>
                             <th class="p-2 text-left">Livello Medio</th>
                             <th class="p-2 text-left">Punteggio Tot.</th>
+                            <th class="p-2 text-left">Alert</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -164,15 +165,16 @@
 
 <!-- 🔧 Configurazione e inizializzazione Firebase -->
 <script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyBGk5B_YtjiEwSGk-4haXpdip4OME3vhcU",
-    authDomain: "competenze-34393.firebaseapp.com",
-    projectId: "competenze-34393",
-    storageBucket: "competenze-34393.appspot.com",
-    messagingSenderId: "7566486414",
-    appId: "1:7566486414:web:d4aaed0c13b270a24552df",
-    measurementId: "G-PYYZ9M7XH7"
-  };
+    const firebaseConfig = {
+        apiKey: "AIzaSyDuDjV6nU5YuNfkivTKJ1kf6NwmkGRIi34",
+        authDomain: "clinicalcompetenceor.firebaseapp.com",
+        projectId: "clinicalcompetenceor",
+        storageBucket: "clinicalcompetenceor.firebasestorage.app",
+        messagingSenderId: "91172915109",
+        appId: "1:91172915109:web:f548cb1f92fb5ae08f8a4c",
+        measurementId: "G-V547BJD3VC"
+    };
+
 
   // 🔥 Inizializza Firebase compatibile
   firebase.initializeApp(firebaseConfig);
@@ -878,151 +880,215 @@ async function loadAll() {
                 return;
             }
 
-            filtered.forEach(item => {
-                const row = tableBody.insertRow();
-                row.className = 'border-b hover:bg-blue-50 dark:hover:bg-gray-700 cursor-pointer transition-colors';
+        filtered.forEach(item => {
+            const row = tableBody.insertRow();
+            row.className = 'border-b hover:bg-blue-50 dark:hover:bg-gray-700 cursor-pointer transition-colors';
 
-                // Usa la proprietà 'classe' (1, 2, 3 o 4) che ora deriva dalla media
-                const levelColor = item.classe === 4 ? 'bg-green-100 text-green-800' : item.classe === 3 ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800';
+            // Usa la proprietà 'classe' (1, 2, 3 o 4) che ora deriva dalla media
+            const levelColor =
+                item.classe === 4 ? 'bg-green-100 text-green-800' :
+                    item.classe === 3 ? 'bg-blue-100 text-blue-800' :
+                        'bg-yellow-100 text-yellow-800';
 
-                row.innerHTML = `
-                    <td class="p-3 text-sm">${item.date}</td>
-                    <td class="p-3 text-sm">${item.nome} ${item.cognome}</td>
-                    <td class="p-3 text-sm">${item.matricola}</td>
-                    <td class="p-3 text-sm">${item.reparto}</td>
-                    <td class="p-3 text-sm"><span class="px-2 py-0.5 rounded-full text-xs font-medium ${levelColor}">${item.levelText}</span></td>
-                    <td class="p-3 text-sm font-semibold">${item.overall}</td>
-                `;
+            row.innerHTML = `
+        <td class="p-3 text-sm">${item.date}</td>
+        <td class="p-3 text-sm">${item.nome} ${item.cognome}</td>
+        <td class="p-3 text-sm">${item.matricola}</td>
+        <td class="p-3 text-sm">${item.reparto}</td>
+        <td class="p-3 text-sm">
+            <span class="px-2 py-0.5 rounded-full text-xs font-medium ${levelColor}">
+                ${item.levelText}
+            </span>
+        </td>
+        <td class="p-3 text-sm font-semibold">${item.overall}</td>
 
-                // NUOVO LISTENER: Clicca per aprire i dettagli
-                row.addEventListener('click', () => showDetails(item));
-            });
+        <!-- ⭐ COLONNA TIMER INSERITA QUI -->
+        <td class="p-3 text-sm">
+            <span class="timer-badge px-2 py-1 rounded text-xs font-semibold"
+                  data-date="${item.date}">
+                —
+            </span>
+        </td>
+    `;
 
-            // Aggiorna i grafici con i dati filtrati
-            updateBarChart(filtered);
-            updatePieCharts(filtered);
+            // Clic per aprire dettagli
+            row.addEventListener('click', () => showDetails(item));
+        });
+
+        // Aggiorna grafici
+        updateBarChart(filtered);
+        updatePieCharts(filtered);
+    }
+
+
+    // --- NUOVA LOGICA ANALISI AI ---
+    function performAIAnalysis() {
+        const totalNurses = all.length;
+        const resultsDiv = document.getElementById('aiAnalysisResults');
+
+        if (totalNurses === 0) {
+            resultsDiv.innerHTML =
+                '<p class="text-red-500 font-semibold">Nessun dato di valutazione trovato per eseguire l\'analisi.</p>';
+            return;
         }
 
-        // --- NUOVA LOGICA ANALISI AI ---
-        function performAIAnalysis() {
-            const totalNurses = all.length;
-            const resultsDiv = document.getElementById('aiAnalysisResults');
+        // 1. Count distribution
+        const counts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+        all.forEach(item => {
+            const classe = Number(item.classe);
+            if (classe >= 1 && classe <= 4) counts[classe]++;
+        });
 
-            if (totalNurses === 0) {
-                resultsDiv.innerHTML = '<p class="text-red-500 font-semibold">Nessun dato di valutazione trovato per eseguire l\'analisi.</p>';
-                return;
+        const percent = {
+            1: ((counts[1] / totalNurses) * 100).toFixed(1),
+            2: ((counts[2] / totalNurses) * 100).toFixed(1),
+            3: ((counts[3] / totalNurses) * 100).toFixed(1),
+            4: ((counts[4] / totalNurses) * 100).toFixed(1),
+        };
+
+        let analysisText = `
+        <h4 class="font-bold text-base mb-2">Risultato Analisi Qualitativa AI (su ${totalNurses} infermieri):</h4>
+        <p class="mb-3">La distribuzione attuale delle competenze (Livello Medio) è la seguente:</p>
+        <ul class="list-disc list-inside space-y-1">
+            <li>Classe 1: ${counts[1]} (${percent[1]}%)</li>
+            <li>Classe 2: ${counts[2]} (${percent[2]}%)</li>
+            <li>Classe 3: ${counts[3]} (${percent[3]}%)</li>
+            <li>Classe 4: ${counts[4]} (${percent[4]}%)</li>
+        </ul>
+        <h5 class="font-bold mt-4 mb-2">Azioni di Miglioramento Raccomandate:</h5>
+        <ul class="list-disc list-inside space-y-2">
+    `;
+
+        const isHighLevel = counts[3] + counts[4] > totalNurses / 2;
+        const isLowLevelCritical =
+            counts[1] > counts[2] && counts[1] > counts[3] && counts[1] > counts[4];
+
+        if (isLowLevelCritical) {
+            analysisText += `
+            <li class="font-semibold text-red-500">Molti infermieri in Classe 1 → Serve Mentorship Intensiva.</li>
+        `;
+        } else if (isHighLevel) {
+            analysisText += `
+            <li class="font-semibold text-blue-600">Prevalenza di Autonomi → Strutturare ruolo tutor.</li>
+        `;
+        } else if (counts[2] > 0) {
+            analysisText += `
+            <li class="font-semibold text-yellow-500">Molti in Classe 2 → Favorire autonomia vigilata.</li>
+        `;
+        }
+
+        analysisText += '</ul>';
+        resultsDiv.innerHTML = analysisText;
+    }
+
+
+
+    // -------------------------------------------------------------------------
+    // ⭐⭐⭐⭐⭐ TIMER COLORE BASATO SU DATA VALUTAZIONE (INSERITO QUI CORRETTAMENTE)
+    // -------------------------------------------------------------------------
+
+    function updateTimers() {
+        const badges = document.querySelectorAll(".timer-badge");
+
+        badges.forEach(badge => {
+            const dateStr = badge.getAttribute("data-date");
+            const evalTime = new Date(dateStr).getTime();
+            const now = Date.now();
+
+            // differenza in giorni interi
+            const diffDays = Math.floor((now - evalTime) / (1000 * 60 * 60 * 24));
+
+            let color = "";
+            let text = diffDays + " giorni";
+
+            if (diffDays < 10) {
+                // 🔵 0–9 giorni → verde
+                color = "bg-green-200 text-green-800";
             }
-
-            // 1. Count distribution
-            const counts = { 1: 0, 2: 0, 3: 0, 4: 0 };
-            all.forEach(item => {
-                const classe = Number(item.classe);
-                if (classe >= 1 && classe <= 4) {
-                    counts[classe]++;
-                }
-            });
-
-            const percent = {
-                1: ((counts[1] / totalNurses) * 100).toFixed(1),
-                2: ((counts[2] / totalNurses) * 100).toFixed(1),
-                3: ((counts[3] / totalNurses) * 100).toFixed(1),
-                4: ((counts[4] / totalNurses) * 100).toFixed(1),
-            };
-
-            let analysisText = `
-                            <h4 class="font-bold text-base mb-2">Risultato Analisi Qualitativa AI (su ${totalNurses} infermieri):</h4>
-                            <p class="mb-3">La distribuzione attuale delle competenze (Livello Medio) è la seguente:</p>
-                            <ul class="list-disc list-inside space-y-1">
-                                <li class="${counts[1] > 0 ? 'font-medium' : ''}">Classe 1 (Supervisione Diretta): ${counts[1]} infermieri (${percent[1]}%)</li>
-                                <li class="${counts[2] > 0 ? 'font-medium' : ''}">Classe 2 (Supervisione Indiretta): ${counts[2]} infermieri (${percent[2]}%)</li>
-                                <li class="${counts[3] > 0 ? 'font-medium' : ''}">Classe 3 (Autonomo): ${counts[3]} infermieri (${percent[3]}%)</li>
-                                <li class="${counts[4] > 0 ? 'font-medium' : ''}">Classe 4 (Formatore): ${counts[4]} infermieri (${percent[4]}%)</li>
-                            </ul>
-                            <h5 class="font-bold mt-4 mb-2">Azioni di Miglioramento Raccomandate:</h5>
-                            <ul class="list-disc list-inside space-y-2">
-                        `;
-
-            // 2. Determine actions based on highest/critical concentration
-            const isHighLevel = counts[3] + counts[4] > totalNurses / 2; // Più della metà sono Autonomi o Formatori
-            const isLowLevelCritical = counts[1] > counts[2] && counts[1] > counts[3] && counts[1] > counts[4]; // Classe 1 è la più numerosa
-
-            if (isLowLevelCritical) {
-                analysisText += `
-                                <li class="font-semibold text-red-500">Focus Critico: Alto numero di infermieri in **Classe 1**.</li>
-                                <li>**KPI: Tasso di Promozione.** Implementare un piano di **Mentorship Intensiva (1:1)** accoppiando Classe 1 e Classe 4, con l'obiettivo di raggiungere il Livello 2 entro 6 mesi.</li>
-                                <li>**KPI: Tempo Medio alla Padronanza.** Organizzare **sessioni pratiche simulate** dedicate (simulazione ad alta fedeltà) per ridurre il tempo necessario a raggiungere l'autonomia per le procedure critiche.</li>
-                                <li>**KPI: Tasso di Incidenti.** Rivedere e semplificare i **Protocolli Operativi Standard (SOP)** per ridurre l'errore umano nella fase di apprendimento diretto.</li>
-                            `;
-            } else if (isHighLevel) {
-                analysisText += `
-                                <li class="font-semibold text-blue-600 dark:text-blue-400">Focus Avanzato: Forte presenza di Autonomia (**Classi 3 e 4**).</li>
-                                <li>**KPI: Ore di Mentorship Erogate.** Formalizzare un **Programma di Tutoring Interno strutturato**, trasformando gli infermieri di Classe 3 e 4 in formatori ufficiali per i colleghi junior (Classi 1 e 2).</li>
-                                <li>**KPI: Numero di Procedure Sviluppate.** Assegnare ai professionisti di Classe 3 e 4 la **Revisione e l'Aggiornamento dei Protocolli** per mantenere l'eccellenza operativa.</li>
-                                <li>**KPI: Indice di Transizione al Mentoring (ITM).** Investire in **Formazione Specialistica Esterna** (Master, Corsi Avanzati) per i professionisti di Classe 4, elevandoli a esperti di riferimento aziendale.</li>
-                            `;
-            } else if (counts[2] > 0) {
-                analysisText += `
-                                <li class="font-semibold text-yellow-500">Focus Intermedio: Maggiore concentrazione in **Classe 2**.</li>
-                                <li>**KPI: Tasso di Promozione.** Promuovere l'**Autonomia Vigilata**: Assegnare responsabilità complete sulla gestione di un'intera procedura sotto supervisione a distanza per favorire il passaggio a Classe 3.</li>
-                                <li>**KPI: Discrepanza Max-Min Competenza.** Programmare **Corsi di Approfondimento Specifico** (es. gestione delle complicanze) per elevare il livello di competenza oltre la base.</li>
-                                <li>**KPI: Indice di Copertura.** Incoraggiare la **Partecipazione a Gruppi di Lavoro** o audit interni per sviluppare il senso critico e la capacità decisionale indipendente.</li>
-                            `;
+            else if (diffDays < 30) {
+                // 🟡 10–29 giorni → giallo
+                color = "bg-yellow-200 text-yellow-800";
             }
             else {
-                analysisText += `
-                                <li>La distribuzione è equilibrata o i dati sono insufficienti per un'analisi mirata. L'azione prioritaria è **identificare le aree di competenza con il punteggio medio più basso** (consultare i dettagli della valutazione) e concentrare la formazione su di esse.</li>
-                                <li>Mantenere un ciclo di valutazione continuo per monitorare la progressione individuale.</li>
-                            `;
+                // 🔴 ≥30 giorni → rosso scaduto
+                color = "bg-red-600 text-white animate-pulse";
+                text = "Scaduto (" + diffDays + " giorni)";
             }
 
-            analysisText += '</ul>';
-            resultsDiv.innerHTML = analysisText;
-        }
-        // --- FINE NUOVA LOGICA ANALISI AI ---
+            badge.className =
+                "timer-badge px-2 py-1 rounded text-xs font-semibold " + color;
 
-
-
-        // exports (Invariate)
-        document.getElementById('exportJSON').addEventListener('click', () => {
-            const blob = new Blob([JSON.stringify(all, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'valutazioni_export.json'; a.click(); URL.revokeObjectURL(url);
+            badge.textContent = text;
         });
-        document.getElementById('exportCSV').addEventListener('click', () => {
-            if (!all.length) { alert('Nessun dato'); return; }
-            const keys = ['date', 'nome', 'cognome', 'matricola', 'reparto', 'valutatore', 'levelText', 'overall'];
-            const rows = [keys.join(',')];
-            all.forEach(r => {
-                rows.push(keys.map(k => `"${(r[k] || '').toString().replace(/"/g, '""')}"`).join(','));
-            });
-            const blob = new Blob([rows.join('\n')], { type: 'text/csv' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'valutazioni_export.csv'; a.click(); URL.revokeObjectURL(url);
+    }
+
+
+    // aggiorna ogni minuto
+    setInterval(updateTimers, 60000);
+
+    // primo aggiornamento
+    document.addEventListener("DOMContentLoaded", () => {
+        setTimeout(updateTimers, 1500);
+    });
+
+    // -------------------------------------------------------------------------
+    // -------------------------------------------------------------------------
+
+
+    // exports (Invariate)
+    document.getElementById('exportJSON').addEventListener('click', () => {
+        const blob = new Blob([JSON.stringify(all, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'valutazioni_export.json';
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('exportCSV').addEventListener('click', () => {
+        if (!all.length) { alert('Nessun dato'); return; }
+
+        const keys = ['date', 'nome', 'cognome', 'matricola', 'reparto', 'valutatore', 'levelText', 'overall'];
+        const rows = [keys.join(',')];
+
+        all.forEach(r => {
+            rows.push(
+                keys.map(k => `"${(r[k] || '').toString().replace(/"/g, '""')}"`).join(',')
+            );
         });
 
-        // events (Corretti: rimosso filterClasse)
-        filterReparto.addEventListener('change', renderTable);
-        searchText.addEventListener('input', renderTable);
+        const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'valutazioni_export.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+    });
 
-        // EVENTO PER NUOVA FUNZIONE AI
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('btnAnalyze').addEventListener('click', performAIAnalysis);
-        });
-// 🚀 Inizializzazione asincrona (attende Firestore)
-        async function init() {
-    // 1️⃣ Applica il tema salvato e imposta i colori Chart.js globali
-    applyTheme(currentTheme);
+    // eventi
+    filterReparto.addEventListener('change', renderTable);
+    searchText.addEventListener('input', renderTable);
 
-    // 2️⃣ Crea le istanze dei grafici (ora con i colori del tema corretti)
-    initCharts();
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('btnAnalyze').addEventListener('click', performAIAnalysis);
+    });
 
-    // 3️⃣ Carica i dati da Firestore (attende completamento)
-    all = await loadAll();  // 🔹 ATTENDE i dati Firestore
-    populateReparti();
+    // 🚀 INIT FINALE
+    async function init() {
+        applyTheme(currentTheme);
+        initCharts();
+        all = await loadAll();
+        populateReparti();
+        renderTable();
 
-    // 4️⃣ Popola la tabella e aggiorna i grafici con i dati reali
-    renderTable();
+        updateTimers(); // primo avvio timer dopo render
 
-    console.log("✅ Report inizializzato con dati Firestore");
-}
-init();</script>
+        console.log("✅ Report inizializzato con dati Firestore");
+    }
+    init();
+</script>
 
     <script>
 
