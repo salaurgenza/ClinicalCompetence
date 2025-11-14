@@ -165,16 +165,15 @@
 
 <!-- 🔧 Configurazione e inizializzazione Firebase -->
 <script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyDuDjV6nU5YuNfkivTKJ1kf6NwmkGRIi34",
-        authDomain: "clinicalcompetenceor.firebaseapp.com",
-        projectId: "clinicalcompetenceor",
-        storageBucket: "clinicalcompetenceor.firebasestorage.app",
-        messagingSenderId: "91172915109",
-        appId: "1:91172915109:web:f548cb1f92fb5ae08f8a4c",
-        measurementId: "G-V547BJD3VC"
-    };
-
+  const firebaseConfig = {
+    apiKey: "AIzaSyBGk5B_YtjiEwSGk-4haXpdip4OME3vhcU",
+    authDomain: "competenze-34393.firebaseapp.com",
+    projectId: "competenze-34393",
+    storageBucket: "competenze-34393.appspot.com",
+    messagingSenderId: "7566486414",
+    appId: "1:7566486414:web:d4aaed0c13b270a24552df",
+    measurementId: "G-PYYZ9M7XH7"
+  };
 
   // 🔥 Inizializza Firebase compatibile
   firebase.initializeApp(firebaseConfig);
@@ -992,7 +991,28 @@ async function loadAll() {
 
         badges.forEach(badge => {
             const dateStr = badge.getAttribute("data-date");
-            const evalTime = new Date(dateStr).getTime();
+
+            // --- PARSING ROBUSTO DELLA DATA ---
+            let evalTime = Date.parse(dateStr);
+
+            // Se il parsing fallisce (es: "13/11/2025")
+            if (isNaN(evalTime)) {
+                const parts = dateStr.split('/');
+                if (parts.length === 3) {
+                    const day = parseInt(parts[0]);
+                    const month = parseInt(parts[1]) - 1; // mesi 0-11
+                    const year = parseInt(parts[2]);
+                    evalTime = new Date(year, month, day).getTime();
+                }
+            }
+
+            // Se ancora NaN → ignora (evita errore e non mostra scaduto)
+            if (isNaN(evalTime)) {
+                badge.textContent = "Data non valida";
+                badge.className = "timer-badge px-2 py-1 rounded text-xs font-semibold bg-gray-300 text-gray-700";
+                return;
+            }
+
             const now = Date.now();
 
             // differenza in giorni interi
@@ -1021,6 +1041,7 @@ async function loadAll() {
             badge.textContent = text;
         });
     }
+
 
 
     // aggiorna ogni minuto
