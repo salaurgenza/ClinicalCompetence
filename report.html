@@ -570,9 +570,7 @@ async function loadAll() {
 
             if (data.infermieri) {
                 data.infermieri.forEach(nurse => {
-                    const lastEval = nurse.valutazioni
-                        ? nurse.valutazioni.find(v => v.reparto === repartoKey)
-                        : null;
+                    const lastEval = nurse.ultimaValutazione || null;
 
                     if (lastEval) {
                         // Calcola la media complessiva
