@@ -30,15 +30,44 @@
 
     <!-- HEADER -->
     <header class="bg-blue-700 text-white flex items-center justify-between px-6 py-4 shadow">
+
+        <!-- TITOLO + BADGE -->
         <div class="flex items-center space-x-4">
             <h1 class="text-2xl font-semibold">Valutazione Competenze</h1>
             <span id="badgeReparto" class="text-sm px-2 py-1 bg-blue-800/30 rounded hidden"></span>
         </div>
-        <div class="flex items-center gap-4">
+
+        <!-- TUTTI I BOTTONI ALLINEATI IN RIGA -->
+        <div class="flex items-center gap-3">
+
             <button id="btnImport" class="text-sm bg-white/10 px-3 py-1 rounded hover:bg-white/20">VBHC</button>
             <button id="themeToggle" class="text-xl">🌙</button>
+
+            <button id="btnLivelli" class="bg-sky-400 text-white px-2 py-2 rounded hover:bg-sky-600 transition">
+                Clinical Competence
+            </button>
+
+            <button id="btnAddNurseLeft" class="bg-green-600 text-white px-2 py-2 rounded">
+                ➕ Aggiungi infermiere
+            </button>
+
+            <button id="btnExportAll" class="bg-gray-200 text-black px-3 py-2 rounded">
+                Esporta tutti (JSON)
+            </button>
+
+            <!--button id="btnClearAll" class="bg-red-100 text-red-700 px-3 py-2 rounded">
+            Svuota dati (test)
+            </!--button-->
+
+            <button id="clearLocal" class="bg-red-600 px-3 py-2 rounded text-white">
+                Reset dati
+            </button>
+
+            <input type="file" id="csvImport" accept=".csv" class="border p-2 rounded">
         </div>
+
     </header>
+
 
     <div class="flex min-h-[calc(100vh-64px)]">
         <!-- SIDEBAR -->
@@ -56,27 +85,11 @@
                 </button>
             </nav>
 
-            <!-- PULSANTE MODALE COMPETENZE / LIVELLI -->
-            <button id="btnLivelli" class="mt-4 w-full bg-purple-600 text-white px-3 py-2 rounded hover:bg-purple-700 transition">
-                Livelli di Riferimento
-            </button>
-
-            <div class="mt-6">
-                <button id="btnAddNurseLeft" class="w-full bg-green-600 text-white px-3 py-2 rounded mb-2">
-                    ➕ Aggiungi infermiere
-                </button>
-                <button id="btnExportAll" class="w-full bg-gray-200 px-3 py-2 rounded mb-2">
-                    Esporta tutti (JSON)
-                </button>
-                <button id="btnClearAll" class="w-full bg-red-100 text-red-700 px-3 py-2 rounded">
-                    Svuota dati (test)
-                </button>
-            </div>
-
             <div class="space-x-3 mt-4">
-                <a href="report.html" class="bg-white/10 px-3 py-1 rounded">Report</a>
-                <button id="clearLocal" class="bg-red-600 px-3 py-1 rounded text-white">Reset dati</button>
-                <input type="file" id="csvImport" accept=".csv" class="border p-2 mt-2 rounded w-full">
+                <button onclick="location.href='report.html'"
+                        class="bg-red-600 px-3 py-2 rounded text-white">
+                    Report
+                </button>
             </div>
 
             <div class="mt-auto text-xs text-center text-gray-500 dark:text-gray-400">
@@ -173,7 +186,7 @@
                 </div>
             </section>
 
-            
+
         </main>
     </div>
 
@@ -722,11 +735,11 @@
 
             if (list.length === 0) {
                 nursesList.innerHTML = `
-                        <tr>
-                            <td colspan="6" class="text-center text-gray-500 py-3">
-                                Nessun infermiere nel reparto ${currentReparto}
-                            </td>
-                        </tr>`;
+                            <tr>
+                                <td colspan="6" class="text-center text-gray-500 py-3">
+                                    Nessun infermiere nel reparto ${currentReparto}
+                                </td>
+                            </tr>`;
                 return;
             }
 
@@ -736,13 +749,13 @@
                     }`;
 
                 tr.innerHTML = `
-                        <td class="px-3 py-2">${n.nome || "-"}</td>
-                        <td class="px-3 py-2">${n.cognome || "-"}</td>
-                        <td class="px-3 py-2">${n.ruolo || "-"}</td>
-                        <td class="px-3 py-2">${n.specialita || "-"}</td>
-                        <td class="px-3 py-2">${n.esperienza || "-"}</td>
-                        <td class="px-3 py-2">${n.interventi || "-"}</td>
-                    `;
+                            <td class="px-3 py-2">${n.nome || "-"}</td>
+                            <td class="px-3 py-2">${n.cognome || "-"}</td>
+                            <td class="px-3 py-2">${n.ruolo || "-"}</td>
+                            <td class="px-3 py-2">${n.specialita || "-"}</td>
+                            <td class="px-3 py-2">${n.esperienza || "-"}</td>
+                            <td class="px-3 py-2">${n.interventi || "-"}</td>
+                        `;
 
                 tr.addEventListener("click", () => {
                     selectNurse(n.id);
@@ -769,15 +782,15 @@
                 const header = document.createElement('div');
                 header.className = 'flex items-center justify-between cursor-pointer';
                 header.innerHTML = `
-                        <h4 class='font-semibold'>${sec.title}</h4>
-                        <label class="flex items-center cursor-pointer">
-                            <div class="relative">
-                                <input type="checkbox" id="${uniqueId}_toggle" class="sr-only competence-toggle">
-                                <div class="block bg-gray-600 w-10 h-6 rounded-full"></div>
-                                <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition"></div>
-                            </div>
-                        </label>
-                    `;
+                            <h4 class='font-semibold'>${sec.title}</h4>
+                            <label class="flex items-center cursor-pointer">
+                                <div class="relative">
+                                    <input type="checkbox" id="${uniqueId}_toggle" class="sr-only competence-toggle">
+                                    <div class="block bg-gray-600 w-10 h-6 rounded-full"></div>
+                                    <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition"></div>
+                                </div>
+                            </label>
+                        `;
 
                 const list = document.createElement('div');
                 list.className = 'mt-4 space-y-4 hidden competence-list';
@@ -798,11 +811,11 @@
                         const label = document.createElement('label');
                         label.className = 'flex items-center gap-1 cursor-pointer';
                         label.innerHTML = `
-                                <input type='radio' id='${radioId}' name='${radioName}'
-                                    data-section='${sIdx}' data-item='${iIdx}' data-value='${val}'
-                                    class='competenza-radio' disabled>
-                                <span>${val}</span>
-                            `;
+                                    <input type='radio' id='${radioId}' name='${radioName}'
+                                        data-section='${sIdx}' data-item='${iIdx}' data-value='${val}'
+                                        class='competenza-radio' disabled>
+                                    <span>${val}</span>
+                                `;
                         radioGroup.appendChild(label);
                     });
 
@@ -848,16 +861,16 @@
             if (!n) return;
 
             nurseCard.innerHTML = `
-                    <div class='font-medium text-lg'>${n.nome} ${n.cognome}</div>
-                    <div class='text-sm text-gray-600'>${n.ruolo || '-'} | Matricola: ${n.matricola || '-'}</div>
-                    <div class='text-sm mt-2'>Esperienza: ${n.esperienza || '-'} anni</div>
-                    <div class='text-sm mt-2 text-gray-500'>
-                        Ultima valutazione: ${n.ultimaValutazione && n.ultimaValutazione.reparto === currentReparto
+                        <div class='font-medium text-lg'>${n.nome} ${n.cognome}</div>
+                        <div class='text-sm text-gray-600'>${n.ruolo || '-'} | Matricola: ${n.matricola || '-'}</div>
+                        <div class='text-sm mt-2'>Esperienza: ${n.esperienza || '-'} anni</div>
+                        <div class='text-sm mt-2 text-gray-500'>
+                            Ultima valutazione: ${n.ultimaValutazione && n.ultimaValutazione.reparto === currentReparto
                     ? n.ultimaValutazione.data
                     : 'Mai (o in altro reparto)'
                 }
-                    </div>
-                `;
+                        </div>
+                    `;
             document.getElementById('btnEditNurse').classList.remove('hidden');
             document.getElementById('btnDeleteNurse').classList.remove('hidden');
         }
@@ -1198,53 +1211,53 @@
                         : 'text-gray-500 dark:text-gray-400';
 
                     summaryHtml += `
-                            <div class="flex flex-col space-y-0">
-                                <span class="text-xs text-gray-700 dark:text-gray-300">${item.question}</span>
-                                <span class="${color} text-sm font-semibold ml-2">${item.level}</span>
-                            </div>`;
+                                <div class="flex flex-col space-y-0">
+                                    <span class="text-xs text-gray-700 dark:text-gray-300">${item.question}</span>
+                                    <span class="${color} text-sm font-semibold ml-2">${item.level}</span>
+                                </div>`;
                 });
             });
             if (detailedLevels) {
                 detailedLevels.innerHTML = summaryHtml || '<p class="text-sm text-gray-500">Nessuna valutazione disponibile.</p>';
             }
             // ===============================
-// 🟦 DETTAGLIO RISPOSTE IN PAGINA PRINCIPALE
-// ===============================
-let pageSummary = '';
+            // 🟦 DETTAGLIO RISPOSTE IN PAGINA PRINCIPALE
+            // ===============================
+            let pageSummary = '';
 
-itemDetails.forEach(section => {
+            itemDetails.forEach(section => {
 
-    // Filtra SOLO le domande con risposta
-    const answered = section.questions.filter(item => item.score > 0);
+                // Filtra SOLO le domande con risposta
+                const answered = section.questions.filter(item => item.score > 0);
 
-    // Se nessuna risposta → NON mostrare la sezione
-    if (answered.length === 0) return;
+                // Se nessuna risposta → NON mostrare la sezione
+                if (answered.length === 0) return;
 
-    // Titolo sezione
-    pageSummary += `
-        <h4 class='font-semibold mt-4 text-blue-700 dark:text-blue-300'>
-            ${section.key}
-        </h4>
-    `;
-
-    // Domande risposte
-    answered.forEach(item => {
-        const color =
-            item.score >= 3
-                ? 'text-green-600 dark:text-green-400'
-                : 'text-blue-600 dark:text-blue-400';
-
-        pageSummary += `
-            <div class="ml-2 border-b pb-1 mb-1">
-                <div class="text-xs">${item.question}</div>
-                <div class="${color} text-sm font-semibold">${item.level}</div>
-            </div>
+                // Titolo sezione
+                pageSummary += `
+            <h4 class='font-semibold mt-4 text-blue-700 dark:text-blue-300'>
+                ${section.key}
+            </h4>
         `;
-    });
-});
 
-document.getElementById("summaryDetails").innerHTML =
-    pageSummary || '<p class="text-sm text-gray-500">Nessuna valutazione disponibile.</p>';
+                // Domande risposte
+                answered.forEach(item => {
+                    const color =
+                        item.score >= 3
+                            ? 'text-green-600 dark:text-green-400'
+                            : 'text-blue-600 dark:text-blue-400';
+
+                    pageSummary += `
+                <div class="ml-2 border-b pb-1 mb-1">
+                    <div class="text-xs">${item.question}</div>
+                    <div class="${color} text-sm font-semibold">${item.level}</div>
+                </div>
+            `;
+                });
+            });
+
+            document.getElementById("summaryDetails").innerHTML =
+                pageSummary || '<p class="text-sm text-gray-500">Nessuna valutazione disponibile.</p>';
 
             // ➜ RADAR
             const labels = getCurrentCompetences().map(s => s.key);
@@ -1392,8 +1405,7 @@ document.getElementById("summaryDetails").innerHTML =
             if (!confirm('Resetta tutti i dati locali (localStorage)?')) return;
             localStorage.removeItem(STORAGE_KEY);
             location.reload();
-        });
-</script>
+        });</script>
 
     <!-- ✅ Firebase compatibile (nessun import/export, nessun errore) -->
     <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
