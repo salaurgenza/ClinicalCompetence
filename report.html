@@ -1,6 +1,28 @@
 <!doctype html>
 <html lang="it">
 <head>
+    <style>
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.55);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .modal-box {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            max-width: 900px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+    </style>
+
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Valutazioni - Report</title>
@@ -30,93 +52,92 @@
     </header>
 
     
-<section class="flex gap-4 justify-center my-6">
-    <button class="bg-blue-600 text-white px-4 py-2 rounded" onclick="openModal('Generali')">
-        S.O. Ch. Generali
-    </button>
-    <button class="bg-purple-600 text-white px-4 py-2 rounded" onclick="openModal('Specialistiche')">
-        S.O. Ch. Specialistiche
-    </button>
-    <button class="bg-green-600 text-white px-4 py-2 rounded" onclick="openModal('Oculistica')">
-        DS Oculistica
-    </button>
-</section>
+    <section class="flex gap-4 justify-center my-6">
+        <button class="bg-blue-600 text-white px-4 py-2 rounded" onclick="openModal('Generali')">
+            S.O. Ch. Generali
+        </button>
+        <button class="bg-purple-600 text-white px-4 py-2 rounded" onclick="openModal('Specialistiche')">
+            S.O. Ch. Specialistiche
+        </button>
+        <button class="bg-green-600 text-white px-4 py-2 rounded" onclick="openModal('Oculistica')">
+            DS Oculistica
+        </button>
+        <button onclick="window.location.href='doghnut_analisi.html'" class="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold px-6 py-2 rounded transition-colors text-lg">
+            Mappa Competenze📊
+        </button>
+    </section>
 <main class="p-6 max-w-6xl mx-auto space-y-6">
 
-        <div class="grid md:grid-cols-3 gap-6">
+    <div class="grid md:grid-cols-3 gap-6">
 
-            <section class="space-y-4 md:col-span-1">
-                <div class="bg-white dark:bg-gray-800 p-4 rounded shadow dark:shadow-lg space-y-3 transition-colors duration-300">
-                    <h3 class="font-semibold mb-2">Filtri</h3>
-                    <div>
-                        <label class="block text-sm mb-1">Filtro Reparto</label>
-                        <select id="filterReparto" class="p-2 border rounded w-full bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
-                            <option value="">— Tutti —</option>
-                        </select>
-                    </div>
+        <section class="space-y-4 md:col-span-1">
+            <div class="bg-white dark:bg-gray-800 p-4 rounded shadow dark:shadow-lg space-y-3 transition-colors duration-300">
+                <h3 class="font-semibold mb-2">Filtri</h3>
+                <div>
+                    <label class="block text-sm mb-1">Filtro Reparto</label>
+                    <select id="filterReparto" class="p-2 border rounded w-full bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
+                        <option value="">— Tutti —</option>
+                    </select>
+                </div>
 
-                    <div>
-                        <label class="block text-sm mb-1">Ricerca testo</label>
-                        <input id="searchText" class="p-2 border rounded w-full dark:bg-gray-700 dark:border-gray-600" placeholder="cerca nome, reparto, matricola...">
-                    </div>
+                <div>
+                    <label class="block text-sm mb-1">Ricerca testo</label>
+                    <input id="searchText" class="p-2 border rounded w-full dark:bg-gray-700 dark:border-gray-600" placeholder="cerca nome, reparto, matricola...">
+                </div>
+            </div>
+        </section>
+
+        <div class="md:col-span-2 space-y-6">
+            <section class="bg-white dark:bg-gray-800 p-4 rounded shadow dark:shadow-lg transition-colors duration-300">
+                <h3 class="font-semibold mb-2">Distribuzione per livello medio (Totale)</h3>
+                <div class="h-64">
+                    <canvas id="barChart" class="w-full h-full"></canvas>
                 </div>
             </section>
+        </div>
+    </div>
 
-            <div class="md:col-span-2 space-y-6">
-                <section class="bg-white dark:bg-gray-800 p-4 rounded shadow dark:shadow-lg transition-colors duration-300">
-                    <h3 class="font-semibold mb-2">Distribuzione per livello medio (Totale)</h3>
-                    <div class="h-64">
-                        <canvas id="barChart" class="w-full h-full"></canvas>
-                    </div>
-                </section>
+
+
+    
+    <!--section class="bg-white dark:bg-gray-800 p-4 rounded shadow dark:shadow-lg transition-colors duration-300">
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="font-semibold text-blue-700 dark:text-blue-300">🤖 Analisi Qualitativa e Azioni di Miglioramento</h3>
+            <button id="btnAnalyze" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded transition-colors">Esegui Analisi AI</button>
+        </div>
+        <div id="aiAnalysisResults" class="mt-4 p-4 border rounded border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 min-h-[100px] text-sm">
+            Clicca su "Esegui Analisi AI" per generare un report sulla distribuzione delle competenze e le azioni raccomandate.
+        </div>
+    </!--section-->
+
+    <section class="bg-white dark:bg-gray-800 p-4 rounded shadow dark:shadow-lg transition-colors duration-300">
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="font-semibold">Tabella valutazioni (Clicca sulla riga per i dettagli)</h3>
+            <div class="flex gap-2">
+                <button id="exportJSON" class="bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-100 px-3 py-1 rounded transition-colors">Esporta JSON</button>
+                <button id="exportCSV" class="bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-100 px-3 py-1 rounded transition-colors">Esporta CSV</button>
             </div>
         </div>
-
-        
-
-        <section class="p-4 rounded shadow bg-white dark:bg-gray-800 text-center">
-            <button onclick="window.location.href='doghnut_analisi.html'" class="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold px-6 py-2 rounded transition-colors text-lg">
-                Vai all'Analisi Mappa Competenze Gerarchica 📊
-            </button>
-        </section>
-        <section class="bg-white dark:bg-gray-800 p-4 rounded shadow dark:shadow-lg transition-colors duration-300">
-            <div class="flex items-center justify-between mb-3">
-                <h3 class="font-semibold text-blue-700 dark:text-blue-300">🤖 Analisi Qualitativa e Azioni di Miglioramento</h3>
-                <button id="btnAnalyze" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded transition-colors">Esegui Analisi AI</button>
-            </div>
-            <div id="aiAnalysisResults" class="mt-4 p-4 border rounded border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 min-h-[100px] text-sm">
-                Clicca su "Esegui Analisi AI" per generare un report sulla distribuzione delle competenze e le azioni raccomandate.
-            </div>
-        </section>
-
-        <section class="bg-white dark:bg-gray-800 p-4 rounded shadow dark:shadow-lg transition-colors duration-300">
-            <div class="flex items-center justify-between mb-3">
-                <h3 class="font-semibold">Tabella valutazioni (Clicca sulla riga per i dettagli)</h3>
-                <div class="flex gap-2">
-                    <button id="exportJSON" class="bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-100 px-3 py-1 rounded transition-colors">Esporta JSON</button>
-                    <button id="exportCSV" class="bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-100 px-3 py-1 rounded transition-colors">Esporta CSV</button>
-                </div>
-            </div>
-            <div class="overflow-x-auto">
-                <table id="resultsTable" class="w-full text-sm table-auto">
-                    <thead class="bg-gray-100 dark:bg-gray-700">
-                        <tr>
-                            <th class="p-2 text-left">Data Valutazione</th>
-                            <th class="p-2 text-left">Nome e Cognome</th>
-                            <th class="p-2 text-left">Matricola</th>
-                            <th class="p-2 text-left">Reparto</th>
-                            <th class="p-2 text-left">ICP</th>
-                            <th class="p-2 text-left">LCGM</th>
-                            <th class="p-2 text-left">Punteggio Tot.</th>
-                            <th class="p-2 text-left">Alert</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    </tbody>
-                </table>
-            </div>
-        </section>
-    </main>
+        <div class="overflow-x-auto">
+            <table id="resultsTable" class="w-full text-sm table-auto">
+                <thead class="bg-gray-100 dark:bg-gray-700">
+                    <tr>
+                        <th class="p-2 text-left">Data Valutazione</th>
+                        <th class="p-2 text-left">Nome e Cognome</th>
+                        <th class="p-2 text-left">Matricola</th>
+                        <th class="p-2 text-left">Reparto</th>
+                        <th class="p-2 text-left">ICP</th>
+                        <th class="p-2 text-left">LCGM</th>
+                        <th class="p-2 text-left">Punteggio Tot.</th>
+                        <th class="p-2 text-left">Alert</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
 
     <div id="detailsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
         <div class="bg-white dark:bg-gray-800 p-6 rounded-lg w-full max-w-4xl shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -1544,15 +1565,15 @@ async function loadAll() {
 
 
 <!-- MODALS -->
-<div id="modalGenerali" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
-  <div class="bg-white dark:bg-gray-800 p-4 rounded w-[90%] h-[90%] relative">
-    <button class="absolute top-2 right-2 text-red-600 font-bold" onclick="closeModal('Generali')">X</button>
-    <h2 class="text-xl font-semibold mb-2">S.O. Chirurgia Generale</h2>
-    <div id="sunburstGeneraliModal" style="width:100%; height:90%;"></div>
-  </div>
-</div>
+    <div id="modalGenerali" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-gray-800 p-4 rounded w-[90%] h-[90%] relative">
+            <button class="absolute top-2 right-2 text-red-600 font-bold" onclick="closeModal('Generali')">X</button>
+            <h2 class="text-xl font-semibold mb-2">S.O. Chirurgia Generale</h2>
+            <div id="sunburstGeneraliModal" style="width:100%; height:90%;"></div>
+        </div>
+    </div>
 
-<div id="modalSpecialistiche" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+<div id="modalSpecialistiche" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50">
   <div class="bg-white dark:bg-gray-800 p-4 rounded w-[90%] h-[90%] relative">
     <button class="absolute top-2 right-2 text-red-600 font-bold" onclick="closeModal('Specialistiche')">X</button>
     <h2 class="text-xl font-semibold mb-2">S.O. Chirurgie Specialistiche</h2>
@@ -1560,7 +1581,7 @@ async function loadAll() {
   </div>
 </div>
 
-<div id="modalOculistica" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+<div id="modalOculistica" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50">
   <div class="bg-white dark:bg-gray-800 p-4 rounded w-[90%] h-[90%] relative">
     <button class="absolute top-2 right-2 text-red-600 font-bold" onclick="closeModal('Oculistica')">X</button>
     <h2 class="text-xl font-semibold mb-2">DS Oculistica</h2>

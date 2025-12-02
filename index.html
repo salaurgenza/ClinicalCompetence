@@ -1446,16 +1446,32 @@
         async function pushReparto(reparto, payload) {
             try {
                 const ref = db.collection("datasets").doc(reparto);
-                const toSave = {
-                    infermieri: payload?.infermieri ?? [],
+                const snap = await ref.get();
+
+                const cloud = snap.exists && Array.isArray(snap.data().infermieri)
+                    ? snap.data().infermieri
+                    : [];
+
+                const local = payload?.infermieri ?? [];
+
+                // 🔥 Merge per ID: non elimina nulla, aggiorna e aggiunge solo
+                const map = new Map();
+
+                cloud.forEach(i => map.set(i.id, i));
+                local.forEach(i => map.set(i.id, i));
+
+                await ref.set({
+                    infermieri: Array.from(map.values()),
                     _updatedAt: new Date().toISOString()
-                };
-                await ref.set(toSave, { merge: true });
-                console.log(`☁️ Dati sincronizzati su Firestore per ${reparto}`);
+                }, { merge: true });
+
+                console.log(`☁️ Merge completato per ${reparto}`);
+
             } catch (e) {
-                console.warn("⚠️ Errore durante pushReparto:", e);
+                console.warn("⚠️ Errore pushReparto:", e);
             }
         }
+
 
         // 🌐 Bridge globale per sincronizzazione cloud ↔︎ locale
         window.firebaseSync = {
